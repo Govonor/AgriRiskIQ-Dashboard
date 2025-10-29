@@ -13,7 +13,7 @@ import L from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import Draggable from "react-draggable";
 import AlertsPanel from "../components/AlertsPanel";
-
+import AnalyticsPanel from "../components/AnalyticsPanel";
 export default function MapPage() {
   const [zones, setZones] = useState([]);
   const [overlay, setOverlay] = useState("none");
@@ -274,5 +274,6 @@ export default function MapPage() {
         <AlertsPanel />
       </div>
     </div>
+    
   );
 }
