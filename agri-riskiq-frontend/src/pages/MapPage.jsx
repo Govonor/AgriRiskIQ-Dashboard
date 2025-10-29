@@ -11,13 +11,15 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import L from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
+import Draggable from "react-draggable";
 import AlertsPanel from "../components/AlertsPanel";
 
 export default function MapPage() {
   const [zones, setZones] = useState([]);
   const [overlay, setOverlay] = useState("none");
+  const [opacity, setOpacity] = useState(0.4);
 
-  // Mock county sample data (for overlays)
+  // Mock sample data for overlays
   const counties = [
     { name: "Makueni", lat: -1.804, lng: 37.62, ndvi: 0.45, rainfall: 34, risk: 72 },
     { name: "Kitui", lat: -1.366, lng: 38.017, ndvi: 0.41, rainfall: 28, risk: 60 },
@@ -35,7 +37,7 @@ export default function MapPage() {
     const { layer } = e;
     const geojson = layer.toGeoJSON();
 
-    // Simulate AI score
+    // Simulate AI risk score
     const score = Math.round(Math.random() * 100);
     const color = score >= 70 ? "#E53935" : score >= 40 ? "#FB8C00" : "#34A853";
 
@@ -61,52 +63,28 @@ export default function MapPage() {
     layer.bindPopup(popup).openPopup();
   };
 
-  // Render color legend dynamically based on overlay type
-  const renderLegend = () => {
-    let legendItems = [];
-    if (overlay === "ndvi") {
-      legendItems = [
+  // Dynamic legend
+  const legendItems = (() => {
+    if (overlay === "ndvi")
+      return [
         { color: "#34A853", label: "Healthy Vegetation" },
         { color: "#FB8C00", label: "Moderate Vegetation" },
         { color: "#E53935", label: "Poor Vegetation" },
       ];
-    } else if (overlay === "rainfall") {
-      legendItems = [
+    if (overlay === "rainfall")
+      return [
         { color: "#34A853", label: "Heavy Rainfall" },
         { color: "#FB8C00", label: "Moderate Rainfall" },
         { color: "#E53935", label: "Low Rainfall" },
       ];
-    } else if (overlay === "risk") {
-      legendItems = [
+    if (overlay === "risk")
+      return [
         { color: "#E53935", label: "High Risk" },
         { color: "#FB8C00", label: "Medium Risk" },
         { color: "#34A853", label: "Low Risk" },
       ];
-    }
-
-    return (
-      legendItems.length > 0 && (
-        <motion.div
-          key={overlay}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 10 }}
-          className="absolute bottom-4 left-4 bg-white/90 rounded-lg shadow p-3 text-sm space-y-1"
-        >
-          <div className="font-semibold text-gray-700 mb-1">Legend</div>
-          {legendItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span
-                className="w-4 h-4 rounded"
-                style={{ backgroundColor: item.color }}
-              ></span>
-              <span className="text-gray-600">{item.label}</span>
-            </div>
-          ))}
-        </motion.div>
-      )
-    );
-  };
+    return [];
+  })();
 
   return (
     <div className="relative p-6 space-y-4">
@@ -122,7 +100,7 @@ export default function MapPage() {
         </div>
 
         {/* Overlay buttons */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           {["none", "ndvi", "rainfall", "risk"].map((o) => (
             <button
               key={o}
@@ -142,6 +120,22 @@ export default function MapPage() {
                 : "🔥 Risk Heatmap"}
             </button>
           ))}
+
+          {/* Opacity Slider */}
+          {overlay !== "none" && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Opacity</span>
+              <input
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={opacity}
+                onChange={(e) => setOpacity(parseFloat(e.target.value))}
+                className="w-24 accent-green-600"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -157,7 +151,7 @@ export default function MapPage() {
             attribution="&copy; <a href='https://www.esri.com/'>Esri</a> Satellite"
           />
 
-          {/* Animated overlay transition */}
+          {/* Animated Overlay */}
           <AnimatePresence mode="wait">
             {overlay !== "none" && (
               <motion.div
@@ -185,7 +179,7 @@ export default function MapPage() {
                           : overlay === "rainfall"
                           ? colorForRain(c.rainfall)
                           : colorForRisk(c.risk),
-                      fillOpacity: 0.4,
+                      fillOpacity: opacity,
                     }}
                   >
                     <Popup>
@@ -219,8 +213,34 @@ export default function MapPage() {
           </FeatureGroup>
         </MapContainer>
 
-        {/* Dynamic legend */}
-        <AnimatePresence mode="wait">{renderLegend()}</AnimatePresence>
+        {/* Draggable Legend */}
+        <AnimatePresence mode="wait">
+          {legendItems.length > 0 && (
+            <Draggable>
+              <motion.div
+                key={overlay}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute bottom-10 left-4 bg-white/90 rounded-lg shadow p-3 text-sm space-y-1 cursor-grab active:cursor-grabbing"
+              >
+                <div className="font-semibold text-gray-700 mb-1 flex justify-between">
+                  <span>Legend</span>
+                  <span className="text-xs text-gray-400">(Drag me)</span>
+                </div>
+                {legendItems.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span
+                      className="w-4 h-4 rounded"
+                      style={{ backgroundColor: item.color }}
+                    ></span>
+                    <span className="text-gray-600">{item.label}</span>
+                  </div>
+                ))}
+              </motion.div>
+            </Draggable>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Summary Section */}
@@ -239,9 +259,7 @@ export default function MapPage() {
                 key={z.id}
                 className="flex justify-between border-b border-gray-100 pb-1"
               >
-                <span>
-                  🗺️ <strong>{z.type}</strong>
-                </span>
+                <span>🗺️ <strong>{z.type}</strong></span>
                 <span style={{ color: z.color, fontWeight: "bold" }}>
                   {z.riskScore}/100
                 </span>
