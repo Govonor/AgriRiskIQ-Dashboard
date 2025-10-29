@@ -10,6 +10,7 @@ import { EditControl } from "react-leaflet-draw";
 import "leaflet/dist/leaflet.css";
 import "leaflet-draw/dist/leaflet.draw.css";
 import L from "leaflet";
+import { motion, AnimatePresence } from "framer-motion";
 import AlertsPanel from "../components/AlertsPanel";
 
 export default function MapPage() {
@@ -34,7 +35,7 @@ export default function MapPage() {
     const { layer } = e;
     const geojson = layer.toGeoJSON();
 
-    // Simulated AI score
+    // Simulate AI score
     const score = Math.round(Math.random() * 100);
     const color = score >= 70 ? "#E53935" : score >= 40 ? "#FB8C00" : "#34A853";
 
@@ -60,12 +61,61 @@ export default function MapPage() {
     layer.bindPopup(popup).openPopup();
   };
 
+  // Render color legend dynamically based on overlay type
+  const renderLegend = () => {
+    let legendItems = [];
+    if (overlay === "ndvi") {
+      legendItems = [
+        { color: "#34A853", label: "Healthy Vegetation" },
+        { color: "#FB8C00", label: "Moderate Vegetation" },
+        { color: "#E53935", label: "Poor Vegetation" },
+      ];
+    } else if (overlay === "rainfall") {
+      legendItems = [
+        { color: "#34A853", label: "Heavy Rainfall" },
+        { color: "#FB8C00", label: "Moderate Rainfall" },
+        { color: "#E53935", label: "Low Rainfall" },
+      ];
+    } else if (overlay === "risk") {
+      legendItems = [
+        { color: "#E53935", label: "High Risk" },
+        { color: "#FB8C00", label: "Medium Risk" },
+        { color: "#34A853", label: "Low Risk" },
+      ];
+    }
+
+    return (
+      legendItems.length > 0 && (
+        <motion.div
+          key={overlay}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="absolute bottom-4 left-4 bg-white/90 rounded-lg shadow p-3 text-sm space-y-1"
+        >
+          <div className="font-semibold text-gray-700 mb-1">Legend</div>
+          {legendItems.map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span
+                className="w-4 h-4 rounded"
+                style={{ backgroundColor: item.color }}
+              ></span>
+              <span className="text-gray-600">{item.label}</span>
+            </div>
+          ))}
+        </motion.div>
+      )
+    );
+  };
+
   return (
     <div className="relative p-6 space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-green-700">AI Map Intelligence</h2>
+          <h2 className="text-xl font-semibold text-green-700">
+            AI Map Intelligence
+          </h2>
           <p className="text-gray-500 text-sm">
             Draw farm zones or explore vegetation, rainfall, and risk overlays.
           </p>
@@ -107,41 +157,53 @@ export default function MapPage() {
             attribution="&copy; <a href='https://www.esri.com/'>Esri</a> Satellite"
           />
 
-          {/* Overlay circles */}
-          {overlay !== "none" &&
-            counties.map((c) => (
-              <CircleMarker
-                key={c.name}
-                center={[c.lat, c.lng]}
-                radius={overlay === "risk" ? 30 : 20}
-                pathOptions={{
-                  color:
-                    overlay === "ndvi"
-                      ? colorForNDVI(c.ndvi)
-                      : overlay === "rainfall"
-                      ? colorForRain(c.rainfall)
-                      : colorForRisk(c.risk),
-                  fillColor:
-                    overlay === "ndvi"
-                      ? colorForNDVI(c.ndvi)
-                      : overlay === "rainfall"
-                      ? colorForRain(c.rainfall)
-                      : colorForRisk(c.risk),
-                  fillOpacity: 0.4,
-                }}
+          {/* Animated overlay transition */}
+          <AnimatePresence mode="wait">
+            {overlay !== "none" && (
+              <motion.div
+                key={overlay}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.6 }}
               >
-                <Popup>
-                  <div style={{ fontSize: 13 }}>
-                    <strong>{c.name}</strong>
-                    <br />
-                    {overlay === "ndvi" && <>NDVI: {c.ndvi}</>}
-                    {overlay === "rainfall" && <>Rainfall: {c.rainfall} mm</>}
-                    {overlay === "risk" && <>Risk: {c.risk}%</>}
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
+                {counties.map((c) => (
+                  <CircleMarker
+                    key={c.name}
+                    center={[c.lat, c.lng]}
+                    radius={overlay === "risk" ? 30 : 20}
+                    pathOptions={{
+                      color:
+                        overlay === "ndvi"
+                          ? colorForNDVI(c.ndvi)
+                          : overlay === "rainfall"
+                          ? colorForRain(c.rainfall)
+                          : colorForRisk(c.risk),
+                      fillColor:
+                        overlay === "ndvi"
+                          ? colorForNDVI(c.ndvi)
+                          : overlay === "rainfall"
+                          ? colorForRain(c.rainfall)
+                          : colorForRisk(c.risk),
+                      fillOpacity: 0.4,
+                    }}
+                  >
+                    <Popup>
+                      <div style={{ fontSize: 13 }}>
+                        <strong>{c.name}</strong>
+                        <br />
+                        {overlay === "ndvi" && <>NDVI: {c.ndvi}</>}
+                        {overlay === "rainfall" && <>Rainfall: {c.rainfall} mm</>}
+                        {overlay === "risk" && <>Risk: {c.risk}%</>}
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
+          {/* Drawing Tools */}
           <FeatureGroup>
             <EditControl
               position="topright"
@@ -156,6 +218,9 @@ export default function MapPage() {
             />
           </FeatureGroup>
         </MapContainer>
+
+        {/* Dynamic legend */}
+        <AnimatePresence mode="wait">{renderLegend()}</AnimatePresence>
       </div>
 
       {/* Summary Section */}
@@ -188,4 +253,8 @@ export default function MapPage() {
 
       {/* Floating Alerts */}
       <div className="fixed top-24 right-4 w-80 z-50 hidden md:block">
-        <AlertsPanel /
+        <AlertsPanel />
+      </div>
+    </div>
+  );
+}
